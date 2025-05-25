@@ -347,12 +347,12 @@ Std_ReturnType Mka_LinkStateChange(uint8 MkaPaeIdx, EthTrcv_LinkStateType Transc
 }
 
 ////////////////////////////CALL BACKS////////////////////////////////////////////////
-/******************************
- *
- * note:      all call back functions not completed and needs to be updated
- *            there is some implmentations according to IEEE as there is no info in AUTOSAR
- *
- */
+/** 
+*
+* note:      all call back functions not completed and needs to be updated
+*            there is some implmentations according to IEEE as there is no info in AUTOSAR
+*
+*/
 
 void Mka_GetMacSecStatisticsNotification(uint8 MkaPaeIdx, Std_ReturnType Result)
 {
@@ -704,10 +704,67 @@ void Mka_MainFunction(void)
 
 // Method To check ICV of given (M/MK)PDU "Recieved from peer"
 Std_ReturnType CheckICV(MACsec_Frame Mpdu)
-{
+{    
     // job(CSM) struct >> Khalifa
     //  check ICV IF True return E_OK else  return E_NOT_OK
-    return E_OK;
+
+    // keda ana mehtag el crypto verify result 
+    // w mehtag jobId w channelId
+Std_ReturnType retVal = E_NOT_OK;
+    Crypto_VerifyResultType verifyResult = CRYPTO_E_VER_NOT_OK;
+    uint32 jobId = 0; 
+    uint32 icvLength = 16; // AES-GCM ICV (16 bytes)
+
+    // Validate Mka_Config
+    if (!Mka_IsInitialized)
+    {
+        Det_ReportError(MKA_MODULE_ID, MKA_INSTANCE_ID, Mka_RX_INDICATION_API_ID, MKA_E_NOT_INITIALIZED);
+        return E_NOT_OK;
+    }
+
+    // Validate input
+    if (payloadLength > sizeof(Mpdu.Payload))
+    {
+        if (Mka_Config.MKA_Instance.General.MkaDevErrorDetect == TRUE)
+        {
+            Det_ReportError(MKA_MODULE_ID, MKA_INSTANCE_ID, Mka_RX_INDICATION_API_ID, MKA_E_INVALID_PARAM);
+        }
+        return E_NOT_OK;
+    }
+
+    uint8 Data[1500]; // Max Payload size
+    if (payloadLength > sizeof(Data))
+    {
+        Det_ReportError(MKA_MODULE_ID, MKA_INSTANCE_ID, Mka_RX_INDICATION_API_ID, MKA_E_INVALID_PARAM);
+        return E_NOT_OK;
+    }
+
+    for (uint32 i = 0; i < payloadLength; i++) {
+        Data[i] = Mpdu.Payload[i];
+    }
+
+    // Call Csm_MacVerify
+    retVal = Csm_MacVerify(
+        jobId,
+        mode,
+        verifyData,
+        payloadLength,
+        (const uint8*)Mpdu.ICV,
+        icvLength * 8, // 128 bits
+        &verifyResult
+    );
+
+    // Handle result
+    if (retVal == E_OK && verifyResult == CRYPTO_E_VER_OK)
+    {
+        retVal = E_OK; // ICV valid
+    }
+    else
+    {
+        retVal = E_NOT_OK; // ICV invalid
+    }
+
+    return retVal;
 }
 
 // Method to generate ICV for pdu frame "Gonna be transimted to peer"
@@ -715,13 +772,48 @@ Std_ReturnType CheckICV(MACsec_Frame Mpdu)
 MACsec_Frame GenerateMACsec_Frame(PDU_Frame PD_Frame)
 {
     // job(CSM) struct >> Khalifa
-    //  generate ICV
+    //  generate ICV 
     MACsec_Frame Mpdu = NULL;
+    uint32 payloadLength = 0;
+    uint32 macLength = 16;
+    uint32 jobId = 0 ;//For example
+   if (PD_Frame.Payload == NULL || PD_Frame.Dmac == NULL || PD_Frame.Smac == NULL)
+    {
+        return Mpdu;
+    }
+
+    while (payloadLength < sizeof(PD_Frame.Payload) && PD_Frame.Payload[payloadLength] != 0) {
+        payloadLength++;
+    }
+
+    if (payloadLength == 0 || payloadLength > sizeof(Mpdu.Payload))
+    {
+        return Mpdu;
+    }
     Mpdu.Dmac = PD_Frame.Dmac;
     Mpdu.Smac = PD_Frame.Smac;
-    // ADD sec tag
-    Mpdu.Payload = PD_Frame.Payload;
-    // add ICV 
+    Mpdu.EtherType = PD_Frame.EtherType;
+    Mpdu.TciAn = PD_Frame.TciAn;
+    Mpdu.ShortLength = PD_Frame.ShortLength;
+    Mpdu.PacketNumber = PD_Frame.PacketNumber;
+    Mpdu.SecureChannelIdentifier = PD_Frame.SecureChannelIdentifier;
+    for (uint32 i = 0; i < payloadLength; i++) {
+        Mpdu.Payload[i] = PD_Frame.Payload[i];
+    }
+    Std_ReturnType retVal=Csm_MacGenerate(
+    uint32 jobId,
+    Crypto_OperationModeType mode,
+    Mpdu.payload,
+    payloadLength,
+    (uint8*)Mpdu.ICV,
+     &macLength,
+   )
+   if (retVal != E_OK)
+    {
+        MACsec_Frame emptyFrame = {0};
+        return emptyFrame;
+    }
+    Mpdu.crc=;
     return Mpdu;
 }
 
