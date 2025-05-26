@@ -77,7 +77,7 @@ static const MkaPaeConfiguration Mka_PaeConfig = {
     .MkaSakRekeyTimeSpan = 86400.0f /* SAK rekey every 24 hours [ECUC_Mka_00024] */
 };
 
-/* Post-build configuration for MkaPaeInstance */
+/* Post-build conffiguration for MkaPaeInstance */
 static const MkaPaeInstance Mka_PaeInstanceConfig = {
     .PermisMode = MKA_PERMISSIVE_MODE_NEVER, /* Never use permissive mode [ECUC_Mka_00018] */
     .MkaOnFailPermissiveModeTimeout = 0.0f, /* No timeout for permissive mode */

@@ -1,6 +1,5 @@
 #include "Mka.h"
-#include "EthernetIf.h"
-// #include "Csm.h"
+
 
 /* Static Module State */
 static Mka_ConfigType Mka_Config;
@@ -49,11 +48,11 @@ void Mka_Init(const Mka_ConfigType *ConfigPtr)
     Mka_Stats.StatsRxSc.InPkts_Late = 0;
     Mka_Stats.StatsRxSc.InPkts_Invalid = 0;
     Mka_Stats.StatsRxSc.InPkts_NotValid = 0;
-
+// mafroud eli y set ethernetSM maarfsh anani al keda leh 
     // Configure EthIf for MKA messages
     for (uint8 i = 0; i < MKA_MAX_PAE_INSTANCES; i++)
     {
-        EthIf_SetControllerMode(Mka_Config.MKA_Instance.Paeinstance[i].MkaPaeIdx, ETH_MODE_ACTIVE);
+        EthIf_SetControllerMode(Mka_Config.MKA_Instance.Paeinstance[i].MkaPaeConfRef->MkaEthIfControllerRef, ETH_MODE_ACTIVE);
     }
     Mka_IsInitialized = TRUE;
 }
@@ -113,9 +112,8 @@ Std_ReturnType Mka_SetCknStatus(uint8 MkaPaeIdx, boolean Enable, const uint8 *Ck
 
     Mka_Config.MKA_Instance.Paeinstance[MkaPaeIdx].KayInstance.Participants[MkaPaeIdx].MkaParticipantActivate = Enable;
 
-    /* Copy CKN to internal state(simplified; actual storage depends on implementation) */
 
-    Mka_Config.MKA_Instance.Paeinstance[MkaPaeIdx].KayInstance.Participants[MkaPaeIdx].MkaCryptoCknCakKeyRef = Ckn; /* Placeholder; actual key reference needed */
+    Mka_Config.MKA_Instance.Paeinstance[MkaPaeIdx].KayInstance.Participants[MkaPaeIdx].MkaCryptoCknCakKeyRef = Ckn; 
 
     // under discussion
     // if (WriteToNvm(MkaPaeIdx, Enable) != E_OK)
@@ -127,7 +125,6 @@ Std_ReturnType Mka_SetCknStatus(uint8 MkaPaeIdx, boolean Enable, const uint8 *Ck
     return retVal;
 }
 
-// done but not sure
 Std_ReturnType Mka_GetCknStatus(uint8 MkaPaeIdx, const uint8 *Ckn, uint8 CknLength, boolean *EnablePtr)
 {
 
@@ -256,6 +253,8 @@ Std_ReturnType Mka_StartPae(uint8 MkaPaeIdx)
         // Interact with Ethernet interface to start PAE
         // Assuming EthIf_StartPae is a function to initiate PAE on Ethernet
         // Question: Sync/Key agreeament ?
+        // ana eli a3rafo ne3mel EthIf_Transmit fiha el PDU w allah a3lam
+        // d kalam anani basha 
         if (EthIf_StartPae(MkaPaeIdx))
         {
             return E_OK;
@@ -634,9 +633,7 @@ void Mka_MacSecAddTxSaNotification(uint8 MkaPaeIdx, Std_ReturnType Result)
     /* Process the result of adding a transmit secure association */
     if (Result == E_OK)
     {
-        /* TX SA add successful */
-        /* Update any state or statistics if needed */
-        /* For example, we might want to trigger a state transition in the MKA state machine */
+
     }
     else
     {
@@ -644,8 +641,7 @@ void Mka_MacSecAddTxSaNotification(uint8 MkaPaeIdx, Std_ReturnType Result)
         /* Handle error case */
         if (Mka_Config.MKA_Instance.General.MkaEnableSecurityEventReporting == TRUE)
         {
-            /* Report security event if enabled */
-            /* This would typically call a security event reporting function */
+
         }
     }
 }
