@@ -1,5 +1,11 @@
 #include "Mka.h"
-
+#include "Crypto.h"
+#include "Crypto_Cfg.h"
+#include "Crypto_GeneralTypes.h"
+#include "Std_Types.h"
+#include "stdbool.h"
+#include "stdio.h"
+#include "mbedtls/gcm.h"
 
 /* Static Module State */
 static Mka_ConfigType Mka_Config;
@@ -698,42 +704,66 @@ void Mka_MainFunction(void)
 
 ///////////////////////////customized Methods for SECY///////////////////////////////
 
-// Method To check ICV of given (M/MK)PDU "Recieved from peer"
-Std_ReturnType CheckICV(MACsec_Frame Mpdu)
+//Method To check ICV of given (M/MK)PDU "Recieved from peer"
+Std_ReturnType CheckICV( uint8_t *Mpdu, uint16 length)
 {    
-    // job(CSM) struct >> Khalifa
-    //  check ICV IF True return E_OK else  return E_NOT_OK
-
-    // keda ana mehtag el crypto verify result 
     // w mehtag jobId w channelId
+    Crypto_JobType macVerifyJob;
+
+    macVerifyJob.jobState = CRYPTO_JOBSTATE_IDLE;
+    // array 
+    uint32 dataLength = sizeof(data);
+    //array bet3 icv
+    uint32 macLength = sizeof(mac);
+    Crypto_VerifyResultType verifyResult;
+
+
+    // Assign pointers to your data and MAC
+    const uint8* dataPtr = data;
+    const uint8* macPtr = mac;
+
+    uint32 outputLenght = 16;
+    uint8 output[16] ;
+    macVerifyJob.jobPrimitiveInputOutput.inputPtr = &Mpdu;
+    macVerifyJob.jobPrimitiveInputOutput.inputLength = length-16-4;
+    
+    macVerifyJob.jobPrimitiveInputOutput.secondaryInputPtr = &Mpdu[length-16-4];
+    macVerifyJob.jobPrimitiveInputOutput.secondaryInputLength = 16;
+
+    macVerifyJob.jobPrimitiveInputOutput.outputPtr = output;
+    macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = &outputLenght;
+
+    macVerifyJob.jobPrimitiveInputOutput.verifyPtr = &verifyResult;
+   // encrypt or decrypt or verify or macgenerate 
+    macVerifyJob.jobPrimitiveInfo = &verifyJob ;
+   // operation mode
+    macVerifyJob.jobPrimitiveInputOutput.mode=CRYPTO_OPERATIONMODE_SINGLECALL;
+Crypto_Init(&Crypto_PBConfig);
+macVerifyJob.cryptoKeyId = 0; // Use your actual key ID
+macVerifyJob.jobState = CRYPTO_JOBSTATE_ACTIVE;
+
+Crypto_ProcessJob(0, &macVerifyJob);
+// check if the ICV is correct
+//uint8* output1 = macVerifyJob.jobPrimitiveInputOutput.outputPtr;
+
+
+
 Std_ReturnType retVal = E_NOT_OK;
-    Crypto_VerifyResultType verifyResult = CRYPTO_E_VER_NOT_OK;
-    uint32 jobId = 0; 
-    uint32 icvLength = 16; // AES-GCM ICV (16 bytes)
-
-    // Validate Mka_Config
-    if (!Mka_IsInitialized)
-    {
-        Det_ReportError(MKA_MODULE_ID, MKA_INSTANCE_ID, Mka_RX_INDICATION_API_ID, MKA_E_NOT_INITIALIZED);
-        return E_NOT_OK;
-    }
-
     // Validate input
-    if (payloadLength > sizeof(Mpdu.Payload))
-    {
-        if (Mka_Config.MKA_Instance.General.MkaDevErrorDetect == TRUE)
-        {
-            Det_ReportError(MKA_MODULE_ID, MKA_INSTANCE_ID, Mka_RX_INDICATION_API_ID, MKA_E_INVALID_PARAM);
-        }
-        return E_NOT_OK;
-    }
-
+    // if (payloadLength > sizeof(Mpdu.Payload))
+    // {
+    //     if (Mka_Config.MKA_Instance.General.MkaDevErrorDetect == TRUE)
+    //     {
+    //         Det_ReportError(MKA_MODULE_ID, MKA_INSTANCE_ID, Mka_RX_INDICATION_API_ID, MKA_E_INVALID_PARAM);
+    //     }
+    //     return E_NOT_OK;
+    // }
     uint8 Data[1500]; // Max Payload size
-    if (payloadLength > sizeof(Data))
-    {
-        Det_ReportError(MKA_MODULE_ID, MKA_INSTANCE_ID, Mka_RX_INDICATION_API_ID, MKA_E_INVALID_PARAM);
-        return E_NOT_OK;
-    }
+    // if (payloadLength > sizeof(Data))
+    // {
+    //     Det_ReportError(MKA_MODULE_ID, MKA_INSTANCE_ID, Mka_RX_INDICATION_API_ID, MKA_E_INVALID_PARAM);
+    //     return E_NOT_OK;
+    // }
 
     for (uint32 i = 0; i < payloadLength; i++) {
         Data[i] = Mpdu.Payload[i];
@@ -749,20 +779,14 @@ Std_ReturnType retVal = E_NOT_OK;
         icvLength * 8, // 128 bits
         &verifyResult
     );
-
-    // Handle result
-    if (retVal == E_OK && verifyResult == CRYPTO_E_VER_OK)
-    {
-        retVal = E_OK; // ICV valid
-    }
-    else
-    {
-        retVal = E_NOT_OK; // ICV invalid
-    }
-
+        if(*(macVerifyJob.jobPrimitiveInputOutput.verifyPtr) == 0x00) {
+            printf("\nMAC verification succeeded - Message is authentic\n");
+        } else {
+            printf("\nMAC verification failed - Potential tampering detected!\n");
+        }
     return retVal;
 }
-
+ 
 // Method to generate ICV for pdu frame "Gonna be transimted to peer"
 // also add sec tag
 MACsec_Frame GenerateMACsec_Frame(PDU_Frame PD_Frame)
@@ -788,16 +812,16 @@ MACsec_Frame GenerateMACsec_Frame(PDU_Frame PD_Frame)
     }
     Mpdu.Dmac = PD_Frame.Dmac;
     Mpdu.Smac = PD_Frame.Smac;
-    Mpdu.EtherType = PD_Frame.EtherType;
-    Mpdu.TciAn = PD_Frame.TciAn;
-    Mpdu.ShortLength = PD_Frame.ShortLength;
-    Mpdu.PacketNumber = PD_Frame.PacketNumber;
-    Mpdu.SecureChannelIdentifier = PD_Frame.SecureChannelIdentifier;
+    Mpdu.EtherType = ;
+    Mpdu.TciAn = ;
+    Mpdu.ShortLength = ;
+    Mpdu.PacketNumber = ;
+    Mpdu.SecureChannelIdentifier = ;
     for (uint32 i = 0; i < payloadLength; i++) {
         Mpdu.Payload[i] = PD_Frame.Payload[i];
     }
     Std_ReturnType retVal=Csm_MacGenerate(
-    uint32 jobId,
+    jobId,
     Crypto_OperationModeType mode,
     Mpdu.payload,
     payloadLength,

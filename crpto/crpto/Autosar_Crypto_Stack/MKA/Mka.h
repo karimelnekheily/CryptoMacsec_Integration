@@ -64,8 +64,10 @@ typedef struct
     // end of sec tag
     uint8 Payload[1500];
     uint64 ICV[2];
+    //
     uint32 CRC;
 } MACsec_Frame;
+
 
 typedef struct
 { // CUSTOMIZED For simulating pdu Frame
