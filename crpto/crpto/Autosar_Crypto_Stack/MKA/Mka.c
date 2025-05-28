@@ -705,7 +705,7 @@ void Mka_GetMacSecStatisticsNotification(uint8 MkaPaeIdx, Std_ReturnType Result)
 ///////////////////////////customized Methods for SECY///////////////////////////////
 
 //Method To check ICV of given (M/MK)PDU "Recieved from peer"
-Std_ReturnType CheckICV( uint8_t *Mpdu, uint16 length)
+Std_ReturnType CheckICV( uint8_t *Mpdu, uint32 length, uint8_t *mac)
 {    
     // w mehtag jobId w channelId
     Crypto_JobType macVerifyJob;
@@ -720,8 +720,8 @@ Std_ReturnType CheckICV( uint8_t *Mpdu, uint16 length)
 
     // Assign pointers to your data and MAC
     const uint8* dataPtr = &Mpdu;
-    const uint8* macPtr = &Mpdu[length-16-4];
-    uint16 DataLen=length-16-4;
+    const uint8* macPtr = &mac;                            //   &Mpdu[length];// hanshil el ICV w crc
+    uint16 DataLen=length;// hanshil el ICV w crc
     uint32 outputLenght = 16;
     uint8 output[16] ;
     macVerifyJob.jobPrimitiveInputOutput.inputPtr = dataPtr;
@@ -749,28 +749,12 @@ Crypto_ProcessJob(0, &macVerifyJob);
 
 
 Std_ReturnType retVal = E_NOT_OK;
-
-//  uint8 Data[1500]; // Max Payload size
-
-
-    // for (uint32 i = 0; i < payloadLength; i++) {
-    //     Data[i] = Mpdu.Payload[i];
-    // }
-
-    // Call Csm_MacVerify
-    retVal = Csm_MacVerify(
-        0,
-        CRYPTO_OPERATIONMODE_SINGLECALL,
-        dataPtr,
-        DataLen,
-        (const uint8*)macPtr,
-        16, // 128 bits
-        &verifyResult
-    );
         if(*(macVerifyJob.jobPrimitiveInputOutput.verifyPtr) == 0x00) {
             printf("\nMAC verification succeeded - Message is authentic\n");
+            retVal = E_OK;
         } else {
             printf("\nMAC verification failed - Potential tampering detected!\n");
+
         }
     return retVal;
 }
@@ -826,7 +810,7 @@ Std_ReturnType GenerateMACsec_Frame(uint8_t *pdu, uint16 length,  uint8_t *Mpdu)
 
     // Assign pointers to your data and MAC
     const uint8* dataPtr = &Mpdu;
-    const uint8* macPtr = &Mpdu[MpduLength - 4];// SUBTRACT 4 bytes for CRC NEGLECTION
+    const uint8* macPtr = &Mpdu[MpduLength];// SUBTRACT 4 bytes for CRC NEGLECTION
     uint16 DataLen=MpduLength - 4;
     uint32 outputLength = 16;
     uint8 output[16] ;
@@ -836,8 +820,8 @@ Std_ReturnType GenerateMACsec_Frame(uint8_t *pdu, uint16 length,  uint8_t *Mpdu)
     // macVerifyJob.jobPrimitiveInputOutput.secondaryInputPtr = macPtr;
     // macVerifyJob.jobPrimitiveInputOutput.secondaryInputLength = 16;
 
-    macVerifyJob.jobPrimitiveInputOutput.outputPtr = macPtr;
-    macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = 16;
+    macVerifyJob.jobPrimitiveInputOutput.outputPtr = output;
+    macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = &outputLength;
      
 
     //macVerifyJob.jobPrimitiveInputOutput.verifyPtr = &verifyResult;
@@ -860,6 +844,10 @@ for(uint16 i=0 ; i<4 ;i++)
 {
     Mpdu[DataLen+i]=pdu[pduLength - 3 + i];
 }
+    printf("\nOutput:");
+    for (int i = 0; i < *(macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr); i++) {
+        printf("%02x ", output1[i]);
+    }
 
 
 //     Std_ReturnType retVal=Csm_MacGenerate(
@@ -887,3 +875,36 @@ for(uint16 i=0 ; i<4 ;i++)
 //     // job(CSM) struct >> Khalifa
 //     // call method from CSM to Generate kek , ick
 // }
+int main(void){
+
+        uint8_t data[] = {
+        0x37, 0x6f, 0x41, // Original data
+        0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    };
+
+    // data[0]=(*uint8)(mpdu & 0x0000000000ff)
+    // data[1]=(*uint8)(mpdu & 0x00000000ff00)
+    // data[2]=(*uint8)(mpdu & 0x000000ff0000)
+    // data[3]=(*uint8)(mpdu & 0x0000000000ff)
+    // data[4]=(*uint8)(mpdu & 0x0000000000ff)
+    // data[5]=(*uint8)(mpdu & 0x0000000000ff)
+    // data[6]=(*uint8)(mpdu & 0x0000000000ff)
+    // data[0]=(*uint8)(mpdu & 0x0000000000ff)
+
+
+ 
+    uint32 dataLength = sizeof(data);
+    printf("%d",dataLength);
+    // MAC array (16 bytes)
+    uint8_t mac[] = {
+        0xb8, 0xfb , 0x4b , 0x0f , 0x2a , 0xd0 , 0x25 , 0xbc , 0xe4 , 0x6b , 0x67 , 0x62 , 0x9f , 0x1b , 0xed , 0x9f 
+    }; 
+    // Your actual MAC value
+    uint32 macLength = sizeof(mac);
+
+    
+      CheckICV(data,dataLength,mac);
+
+
+
+}
