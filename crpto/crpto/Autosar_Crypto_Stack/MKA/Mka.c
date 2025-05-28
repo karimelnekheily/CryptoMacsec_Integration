@@ -810,10 +810,10 @@ Std_ReturnType GenerateMACsec_Frame(uint8_t *pdu, uint16 length,  uint8_t *Mpdu)
 
     // Assign pointers to your data and MAC
     const uint8* dataPtr = &Mpdu;
-    const uint8* macPtr = &Mpdu[MpduLength];// SUBTRACT 4 bytes for CRC NEGLECTION
-    uint16 DataLen=MpduLength - 4;
+    uint16 DataLen=MpduLength - 4;//remove CRC size from Mpdu
+    uint8 output[16];
     uint32 outputLength = 16;
-    uint8 output[16] ;
+    
     macVerifyJob.jobPrimitiveInputOutput.inputPtr = dataPtr;
     macVerifyJob.jobPrimitiveInputOutput.inputLength = DataLen;
     
@@ -834,9 +834,9 @@ macVerifyJob.cryptoKeyId = 0; // Use your actual key ID
 macVerifyJob.jobState = CRYPTO_JOBSTATE_ACTIVE;
  uint8* output1 = macVerifyJob.jobPrimitiveInputOutput.outputPtr;   
 
- for(uint16 i=DataLen;i<DataLen+16;i++){
+for(uint16 i=DataLen;i<DataLen+16;i++){
     Mpdu[i]=output1[i-DataLen];
- }
+}
 
  DataLen += 16; // added ICV
 // crc storing 
