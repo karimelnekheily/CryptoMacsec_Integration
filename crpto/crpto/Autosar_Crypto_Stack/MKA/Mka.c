@@ -785,11 +785,20 @@ Std_ReturnType GenerateMac(uint8 *Pdu, uint32 length, uint8 *mac)
     Crypto_VerifyResultType verifyResult;
 
     // Assign pointers to your data and MAC
-    const uint8* dataPtr = &Mpdu;
-    const uint8* macPtr = &Mpdu[MpduLength];// SUBTRACT 4 bytes for CRC NEGLECTION
-    uint16 DataLen=MpduLength - 4;
-    uint32 outputLength = 16;
-    uint8 output[16] ;
+    const uint8 *dataPtr = Pdu;
+    printf("/n MPDU");
+    for (int i = 0; i < length; i++)
+    {
+        printf("%02x ", dataPtr[i]);
+    }
+    //  printf("/n MAC");
+    // const uint8* macPtr = mac;
+    //         for (int i = 0; i < 16; i++) {
+    //     printf("%02x ", macPtr[i]);
+    // }                           //   &Mpdu[length];// hanshil el ICV w crc
+    uint32 DataLen = length; // hanshil el ICV w crc
+    uint32 outputLenght = 16;
+    uint8 output[16];
     macVerifyJob.jobPrimitiveInputOutput.inputPtr = dataPtr;
     macVerifyJob.jobPrimitiveInputOutput.inputLength = DataLen;
 
@@ -797,34 +806,134 @@ Std_ReturnType GenerateMac(uint8 *Pdu, uint32 length, uint8 *mac)
     // macVerifyJob.jobPrimitiveInputOutput.secondaryInputLength = 16;
 
     macVerifyJob.jobPrimitiveInputOutput.outputPtr = output;
-    macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = &outputLength;
-     
+    macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = &outputLenght;
 
-    //macVerifyJob.jobPrimitiveInputOutput.verifyPtr = &verifyResult;
-   // encrypt or decrypt or verify or macgenerate 
-    macVerifyJob.jobPrimitiveInfo = &macGenerateJob ;
-   // operation mode
-    macVerifyJob.jobPrimitiveInputOutput.mode=CRYPTO_OPERATIONMODE_SINGLECALL;
-Crypto_Init(&Crypto_PBConfig);
-macVerifyJob.cryptoKeyId = 0; // Use your actual key ID
-macVerifyJob.jobState = CRYPTO_JOBSTATE_ACTIVE;
- uint8* output1 = macVerifyJob.jobPrimitiveInputOutput.outputPtr;   
+    macVerifyJob.jobPrimitiveInputOutput.verifyPtr = &verifyResult;
+    // encrypt or decrypt or verify or macgenerate
+    macVerifyJob.jobPrimitiveInfo = &macGenerateJob;
+    // operation mode
+    macVerifyJob.jobPrimitiveInputOutput.mode = CRYPTO_OPERATIONMODE_SINGLECALL;
+    Crypto_Init(&Crypto_PBConfig);
+    macVerifyJob.cryptoKeyId = 0; // Use your actual key ID
+    macVerifyJob.jobState = CRYPTO_JOBSTATE_ACTIVE;
 
- for(uint16 i=DataLen;i<DataLen+16;i++){
-    Mpdu[i]=output1[i-DataLen];
- }
+    Crypto_ProcessJob(0, &macVerifyJob);
+    // check if the ICV is correct
+    // mac = macVerifyJob.jobPrimitiveInputOutput.outputPtr;
+    memcpy(mac, output, 16);
 
- DataLen += 16; // added ICV
-// crc storing 
-for(uint16 i=0 ; i<4 ;i++)
-{
-    Mpdu[DataLen+i]=pdu[pduLength - 3 + i];
-}
-    printf("\nOutput:");
-    for (int i = 0; i < *(macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr); i++) {
-        printf("%02x ", output1[i]);
+    Std_ReturnType retVal = E_NOT_OK;
+    if(*(macVerifyJob.jobPrimitiveInputOutput.verifyPtr) == 0x00) {
+        printf("\nMAC verification succeeded - Message is authentic\n");
+        retVal = E_OK;
+    } else {
+        printf("\nMAC verification failed - Potential tampering detected!\n");
+
     }
+    printf("\n Output:\n");
+    for (int i = 0; i < *(macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr); i++)
+    {
+        printf("%02x ", mac[i]);
+    }
+    return retVal;
+}
 
+// Method to generate ICV for pdu frame "Gonna be transimted to peer"
+// also add sec tag
+Std_ReturnType GenerateMACsec_Frame(uint8 *pdu, uint32 length,  uint8 *Mpdu)
+{
+//     uint16 pduLength = length; // D + S + PayLoad + CRC
+//     uint16 MpduLength = length + 16;    // pdu length + 16 bytes for sectag
+
+//     //CLONE DATA FROM PDU TO MPDU EXCLUDING CRC
+//     for(uint16 i = 0 ; i<(pduLength-4) ; i++) // SUBTRACT 4 bytes for CRC NEGLECTION
+//     {
+//         if(i >= 12){
+//             Mpdu[i+16] = pdu[i];
+//         }
+//         else
+//         {
+//             Mpdu[i] = pdu[i];
+//         }
+//     }
+
+
+    
+//     length += 12;
+//     add sec tag from location 12 to 27
+//     Mpdu[12]=0x88;
+//     Mpdu[13]=0x8e;
+//     Mpdu[14]=0x00;
+//     Mpdu[15]=0x00;
+//     Mpdu[16]=0x00;
+//     Mpdu[17]=0x00;
+//     Mpdu[18]=0x00;
+//     Mpdu[19]=0x00;
+//     Mpdu[20]=0x00;
+//     Mpdu[21]=0x00;
+//     Mpdu[22]=0x00;
+//     Mpdu[23]=0x00;
+//     Mpdu[24]=0x00;
+//     Mpdu[25]=0x00;
+//     Mpdu[26]=0x00;
+//     Mpdu[27]=0xff;
+//     // N.B : 4 bytes of CRC is EMPTY in Mpdu
+//     printf("\n Mpdu : \n");
+//         for (int i = 0; i <MpduLength-4; i++)
+//     {
+//         printf("%02x ", Mpdu[i]);
+//     }
+//     // w mehtag jobId w channelId
+//     Crypto_JobType macVerifyJob;
+
+//     macVerifyJob.jobState = CRYPTO_JOBSTATE_IDLE;
+//     // array
+//     //uint32 dataLength = sizeof(data);
+//     //array bet3 icv
+//     //uint32 macLength = sizeof(mac);
+//     Crypto_VerifyResultType verifyResult;
+
+//     // Assign pointers to your data and MAC
+//     const uint8* dataPtr = Mpdu;
+//     const uint8* macPtr = &Mpdu[MpduLength-4];  // SUBTRACT 4 bytes for CRC NEGLECTION
+//     uint16 DataLen=MpduLength-4;
+//     uint32 outputLength = 16;
+//     uint8 output[16] ;
+//     macVerifyJob.jobPrimitiveInputOutput.inputPtr = dataPtr;
+//     macVerifyJob.jobPrimitiveInputOutput.inputLength = DataLen;
+
+//     // macVerifyJob.jobPrimitiveInputOutput.secondaryInputPtr = macPtr;
+//     // macVerifyJob.jobPrimitiveInputOutput.secondaryInputLength = 16;
+
+//     macVerifyJob.jobPrimitiveInputOutput.outputPtr = output;
+//     macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = &outputLength;
+
+//     //macVerifyJob.jobPrimitiveInputOutput.verifyPtr = &verifyResult;
+//    // encrypt or decrypt or verify or macgenerate
+//     macVerifyJob.jobPrimitiveInfo = &macGenerateJob ;
+//    // operation mode
+//     macVerifyJob.jobPrimitiveInputOutput.mode=CRYPTO_OPERATIONMODE_SINGLECALL;
+// Crypto_Init(&Crypto_PBConfig);
+// macVerifyJob.cryptoKeyId = 0; // Use your actual key ID
+// macVerifyJob.jobState = CRYPTO_JOBSTATE_ACTIVE;
+//  uint8* output1 = macVerifyJob.jobPrimitiveInputOutput.outputPtr;
+
+// //  for(uint16 i=DataLen;i<DataLen+16;i++){
+// //     Mpdu[i]=output1[i-DataLen];
+// //  }
+// memcpy(&Mpdu[DataLen], output1, 16);  // Same as above, but using array syntax
+
+
+//  DataLen += 16; // added ICV
+// // crc storing
+// for(uint16 i=0 ; i<4 ;i++)
+// {
+//     Mpdu[DataLen+i]=pdu[pduLength - 3 + i];
+// }
+//     printf("\nOutput:");
+//     for (int i = 0; i < *(macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr); i++) {
+//         printf("%02x ", output1[i]);
+//     }
 
 //         printf("\n Mpdu  after : \n");
 //         for (int i = 0; i <MpduLength-4; i++)
