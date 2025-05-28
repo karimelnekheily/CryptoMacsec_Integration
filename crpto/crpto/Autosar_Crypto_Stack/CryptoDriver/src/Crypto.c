@@ -365,77 +365,77 @@ Std_ReturnType Crypto_ProcessJob(uint32 objectId, Crypto_JobType* job)
 }   
 
 //main code
-int main()
-{
-    Crypto_JobType macVerifyJob;
-    macVerifyJob.jobState = CRYPTO_JOBSTATE_IDLE;
-    // uint8_t data[] = {
-    //     0xbc, 0x4f, 0x08, // Original data
-    //     0xed, 0x58, 0x36, 0x67, 0xf3, 0x0e, 0x08, 0xc9, 0xa9, 0xe6, 0x7f, 0x7c, 0x77
-    // };
-    // Initialize your data, MAC, and result variables (example values)
-    uint8_t data[] = {
-        0x01, 0x02, 0x03, // Original data
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-    };
+// int main()
+// {
+//     Crypto_JobType macVerifyJob;
+//     macVerifyJob.jobState = CRYPTO_JOBSTATE_IDLE;
+//     // uint8_t data[] = {
+//     //     0xbc, 0x4f, 0x08, // Original data
+//     //     0xed, 0x58, 0x36, 0x67, 0xf3, 0x0e, 0x08, 0xc9, 0xa9, 0xe6, 0x7f, 0x7c, 0x77
+//     // };
+//     // Initialize your data, MAC, and result variables (example values)
+//     uint8_t data[] = {
+//         0x01, 0x02, 0x03, // Original data
+//         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+//     };
 
-    uint32 dataLength = sizeof(data);
-    printf("%d",dataLength);
-    // MAC array (16 bytes)
-    uint8_t mac[] = {
-        0xb8, 0xfb , 0x4b , 0x0f , 0x2a , 0xd0 , 0x25 , 0xbc , 0xe4 , 0x6b , 0x67 , 0x62 , 0x9f , 0x1b , 0xed , 0x9f 
-    }; 
-    // Your actual MAC value
-    uint32 macLength = sizeof(mac);
-    Crypto_VerifyResultType verifyResult;
+//     uint32 dataLength = sizeof(data);
+//     printf("%d",dataLength);
+//     // MAC array (16 bytes)
+//     uint8_t mac[] = {
+//         0xb8, 0xfb , 0x4b , 0x0f , 0x2a , 0xd0 , 0x25 , 0xbc , 0xe4 , 0x6b , 0x67 , 0x62 , 0x9f , 0x1b , 0xed , 0x9f 
+//     }; 
+//     // Your actual MAC value
+//     uint32 macLength = sizeof(mac);
+//     Crypto_VerifyResultType verifyResult;
     
-    // Assign pointers to your data and MAC
-    const uint8* dataPtr = data;
-    const uint8* macPtr = mac;
-    uint32 outputLenght = 16;
-    uint8 output[16] ;
+//     // Assign pointers to your data and MAC
+//     const uint8* dataPtr = data;
+//     const uint8* macPtr = mac;
+//     uint32 outputLenght = 16;
+//     uint8 output[16] ;
     
-    macVerifyJob.jobPrimitiveInputOutput.inputPtr = dataPtr;
-    macVerifyJob.jobPrimitiveInputOutput.inputLength = dataLength;
+//     macVerifyJob.jobPrimitiveInputOutput.inputPtr = dataPtr;
+//     macVerifyJob.jobPrimitiveInputOutput.inputLength = dataLength;
     
-    macVerifyJob.jobPrimitiveInputOutput.secondaryInputPtr = macPtr;
-    macVerifyJob.jobPrimitiveInputOutput.secondaryInputLength = macLength;
+//     macVerifyJob.jobPrimitiveInputOutput.secondaryInputPtr = macPtr;
+//     macVerifyJob.jobPrimitiveInputOutput.secondaryInputLength = macLength;
 
-    macVerifyJob.jobPrimitiveInputOutput.outputPtr = output;
-    macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = &outputLenght;
+//     macVerifyJob.jobPrimitiveInputOutput.outputPtr = output;
+//     macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = &outputLenght;
 
-    macVerifyJob.jobPrimitiveInputOutput.verifyPtr = &verifyResult;
+//     macVerifyJob.jobPrimitiveInputOutput.verifyPtr = &verifyResult;
     
     
-    macVerifyJob.jobPrimitiveInfo = &verifyJob ;
+//     macVerifyJob.jobPrimitiveInfo = &verifyJob ;
    
-    macVerifyJob.jobPrimitiveInputOutput.mode=CRYPTO_OPERATIONMODE_SINGLECALL;
-    // Initialize Crypto module with configuration
-    Crypto_Init(&Crypto_PBConfig);
-    macVerifyJob.cryptoKeyId = 0; // Use your actual key ID
-    macVerifyJob.jobState = CRYPTO_JOBSTATE_ACTIVE;
+//     macVerifyJob.jobPrimitiveInputOutput.mode=CRYPTO_OPERATIONMODE_SINGLECALL;
+//     // Initialize Crypto module with configuration
+//     Crypto_Init(&Crypto_PBConfig);
+//     macVerifyJob.cryptoKeyId = 0; // Use your actual key ID
+//     macVerifyJob.jobState = CRYPTO_JOBSTATE_ACTIVE;
 
-    // Process the job
-    Crypto_ProcessJob(0, &macVerifyJob);
-    uint8* output1 = macVerifyJob.jobPrimitiveInputOutput.outputPtr;
-    // Check verification result
+//     // Process the job
+//     Crypto_ProcessJob(0, &macVerifyJob);
+//     uint8* output1 = macVerifyJob.jobPrimitiveInputOutput.outputPtr;
+//     // Check verification result
     
-    // if(macVerifyJob.jobPrimitiveInfo->primitiveInfo->service == CRYPTO_MACGENERATE)
-    // {
-    printf("\nOutput:");
-    for (int i = 0; i < *(macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr); i++) {
-        printf("%02x ", output1[i]);
-    }
+//     // if(macVerifyJob.jobPrimitiveInfo->primitiveInfo->service == CRYPTO_MACGENERATE)
+//     // {
+//     printf("\nOutput:");
+//     for (int i = 0; i < *(macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr); i++) {
+//         printf("%02x ", output1[i]);
+//     }
 
-    if(macVerifyJob.jobPrimitiveInfo->primitiveInfo->service == CRYPTO_MACVERIFY)
-    {
-        if(*(macVerifyJob.jobPrimitiveInputOutput.verifyPtr) == 0x00) {
-            printf("\nMAC verification succeeded - Message is authentic\n");
-        } else {
-            printf("\nMAC verification failed - Potential tampering detected!\n");
-        }
-    }
+//     if(macVerifyJob.jobPrimitiveInfo->primitiveInfo->service == CRYPTO_MACVERIFY)
+//     {
+//         if(*(macVerifyJob.jobPrimitiveInputOutput.verifyPtr) == 0x00) {
+//             printf("\nMAC verification succeeded - Message is authentic\n");
+//         } else {
+//             printf("\nMAC verification failed - Potential tampering detected!\n");
+//         }
+//     }
 
-    while (1);
-    return 0;
-}
+//     while (1);
+//     return 0;
+// }

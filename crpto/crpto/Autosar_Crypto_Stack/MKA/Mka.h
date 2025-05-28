@@ -144,8 +144,8 @@ typedef struct
 
 typedef enum
 {
-    MKA_PERMISSIVE_MODE_NEVER,
-    MKA_PERMISSIVE_MODE_TIMEOUT
+    MKA_PERMISSIVE_MODE_NEVER_H,
+    MKA_PERMISSIVE_MODE_TIMEOUT_H
 } Mka_PermissiveModeType;
 
 typedef struct
@@ -218,8 +218,8 @@ Std_ReturnType Mka_GetMacSecStatistics(uint8 MkaPaeIdx, Mka_Stats_SecYType *MacS
 Std_ReturnType Mka_LinkStateChange(uint8 MkaPaeIdx, EthTrcv_LinkStateType TransceiverLinkState);
 
 // customized for SECY
-Std_ReturnType CheckICV(MACsec_Frame Mpdu);
-MACsec_Frame GenerateMACsec_Frame(PDU_Frame PD_Frame);
+Std_ReturnType CheckICV( uint8 *Mpdu, uint32 length);
+Std_ReturnType GenerateMACsec_Frame(uint8 *pdu, uint32 length,  uint8 *Mpdu);
 Std_ReturnType getSAK(Mka_SakKeyPtrType *SakKeyPtr);
 void getKeyDerivaions(uint64 *CAK, uint64 *KEK, uint64 *ICK);
 ////////////////////call backs///////////////////////////////////
