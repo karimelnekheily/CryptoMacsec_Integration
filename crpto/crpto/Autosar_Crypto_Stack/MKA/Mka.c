@@ -876,7 +876,7 @@ for(uint16 i=0 ; i<4 ;i++)
 //     // call method from CSM to Generate kek , ick
 // }
 int main(void){
-
+Std_ReturnType retval;
         uint8_t data[] = {
         0x37, 0x6f, 0x41, // Original data
         0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -903,7 +903,13 @@ int main(void){
     uint32 macLength = sizeof(mac);
 
     
-      CheckICV(data,dataLength,mac);
+      retval=CheckICV(data,dataLength,mac);
+        if(retval == E_OK){
+        printf("ICV is correct\n");
+        }
+        else{
+            printf("ICV is incorrect\n");
+        }
 
 
 
