@@ -943,15 +943,15 @@ Std_ReturnType GenerateMACsec_Frame(uint8 *pdu, uint32 length,  uint8 *Mpdu)
 
 // }
 }
-// Std_ReturnType getSAK(Mka_SakKeyPtrType *SakKeyPtrStruct)
-// {
-//     // job(CSM) struct >> Khalifa
-//     // call method from CSM to Generate SAK
-//     uint64 sak = 0x12345678;
-//     SakKeyPtrStruct->SakKeyPtr = sak;
-//     return E_OK;
-//     // if not true return E_NOT_OK;
-// }
+Std_ReturnType getSAK(Mka_SakKeyPtrType *SakKeyPtrStruct)
+{
+    // job(CSM) struct >> Khalifa
+    // call method from CSM to Generate SAK
+    uint64 sak = 0x12345678;
+    SakKeyPtrStruct->SakKeyPtr = sak;
+    return E_OK;
+    // if not true return E_NOT_OK;
+}
 // void getKeyDerivaions(uint64 *CAK, uint64 *KEK, uint64 *ICK)
 // {
 //     // job(CSM) struct >> Khalifa
@@ -971,6 +971,8 @@ int main(void)
         0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};    
 
     uint32 dataLength = sizeof(pdu);
+
+     uint32 dataL = sizeof(data);
     printf("%d \n", dataLength);
     // MAC array (16 bytes)
     //uint8 Mpdu[20+32];
@@ -1000,15 +1002,15 @@ int main(void)
 
     // Your actual MAC value
     // uint32 macLength = sizeof(mac);
-    // retval = CheckICV(data, dataLength);// kan mafroud maknha data 
-    // if (retval == E_OK)
-    // {
-    //     printf("ICV is correct\n");
-    // }
-    // else
-    // {
-    //     printf("ICV is incorrect\n");
-    // }
+    retval = CheckICV(data, dataL);// kan mafroud maknha data 
+    if (retval == E_OK)
+    {
+        printf("ICV is correct\n");
+    }
+    else
+    {
+        printf("ICV is incorrect\n");
+    }
     // printf("\n before \n");
     // for (int i = 0; i < 16; i++) {
     // printf("%02x ", mac1[i]);
