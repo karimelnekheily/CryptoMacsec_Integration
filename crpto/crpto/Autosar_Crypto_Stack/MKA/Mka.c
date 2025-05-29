@@ -772,7 +772,7 @@ Std_ReturnType CheckICV(uint8 *Mpdu, uint32 length)
     return retVal;
 }
 
-Std_ReturnType GenerateMac(uint8 *Pdu, uint32 length, uint8 *mac)
+Std_ReturnType GenerateMac(uint8 *data, uint32 length, uint8 *mac)
 {
     // w mehtag jobId w channelId
     Crypto_JobType macVerifyJob;
@@ -785,12 +785,17 @@ Std_ReturnType GenerateMac(uint8 *Pdu, uint32 length, uint8 *mac)
     Crypto_VerifyResultType verifyResult;
 
     // Assign pointers to your data and MAC
-    const uint8 *dataPtr = Pdu;
-    printf("/n MPDU");
+
+
+    const uint8 *dataPtr = data;
+    printf("\n DATA : \n");
     for (int i = 0; i < length; i++)
     {
         printf("%02x ", dataPtr[i]);
     }
+    printf("\n");
+
+
     //  printf("/n MAC");
     // const uint8* macPtr = mac;
     //         for (int i = 0; i < 16; i++) {
@@ -823,6 +828,8 @@ Std_ReturnType GenerateMac(uint8 *Pdu, uint32 length, uint8 *mac)
     memcpy(mac, output, 16);
 
     Std_ReturnType retVal = E_NOT_OK;
+
+
     if(*(macVerifyJob.jobPrimitiveInputOutput.verifyPtr) == 0x00) {
         printf("\nMAC verification succeeded - Message is authentic\n");
         retVal = E_OK;
@@ -830,11 +837,8 @@ Std_ReturnType GenerateMac(uint8 *Pdu, uint32 length, uint8 *mac)
         printf("\nMAC verification failed - Potential tampering detected!\n");
 
     }
-    printf("\n Output:\n");
-    for (int i = 0; i < *(macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr); i++)
-    {
-        printf("%02x ", mac[i]);
-    }
+
+
     return retVal;
 }
 
@@ -842,107 +846,70 @@ Std_ReturnType GenerateMac(uint8 *Pdu, uint32 length, uint8 *mac)
 // also add sec tag
 Std_ReturnType GenerateMACsec_Frame(uint8 *pdu, uint32 length,  uint8 *Mpdu)
 {
-//     uint16 pduLength = length; // D + S + PayLoad + CRC
-//     uint16 MpduLength = length + 16;    // pdu length + 16 bytes for sectag
+     uint16 pduLength = length; // D + S + PayLoad + CRC
+     uint16 payloadSize = length-((6*2)+4); //get payload length from pdu
+     uint16 MpduCumLength = 0 ;  // cummilative MPdu size
 
-//     //CLONE DATA FROM PDU TO MPDU EXCLUDING CRC
-//     for(uint16 i = 0 ; i<(pduLength-4) ; i++) // SUBTRACT 4 bytes for CRC NEGLECTION
-//     {
-//         if(i >= 12){
-//             Mpdu[i+16] = pdu[i];
-//         }
-//         else
-//         {
-//             Mpdu[i] = pdu[i];
-//         }
-//     }
+     //add source and destination address from pdu to Mpdu
+     for(uint16 i = 0 ; i<=11; i++) 
+     {
+        Mpdu[i] = pdu[i];
+     }
 
+     MpduCumLength += 12;
 
+    //add sec tag from location 12 to 27
+    Mpdu[12]=0x88;
+    Mpdu[13]=0x8e;
+    Mpdu[14]=0x00;
+    Mpdu[15]=0x00;
+    Mpdu[16]=0x00;
+    Mpdu[17]=0x00;
+    Mpdu[18]=0x00;
+    Mpdu[19]=0x00;
+    Mpdu[20]=0x00;
+    Mpdu[21]=0x00;
+    Mpdu[22]=0x00;
+    Mpdu[23]=0x00;
+    Mpdu[24]=0x00;
+    Mpdu[25]=0x00;
+    Mpdu[26]=0x00;
+    Mpdu[27]=0xff;
+
+    MpduCumLength += 16;
     
-//     length += 12;
-//     add sec tag from location 12 to 27
-//     Mpdu[12]=0x88;
-//     Mpdu[13]=0x8e;
-//     Mpdu[14]=0x00;
-//     Mpdu[15]=0x00;
-//     Mpdu[16]=0x00;
-//     Mpdu[17]=0x00;
-//     Mpdu[18]=0x00;
-//     Mpdu[19]=0x00;
-//     Mpdu[20]=0x00;
-//     Mpdu[21]=0x00;
-//     Mpdu[22]=0x00;
-//     Mpdu[23]=0x00;
-//     Mpdu[24]=0x00;
-//     Mpdu[25]=0x00;
-//     Mpdu[26]=0x00;
-//     Mpdu[27]=0xff;
-//     // N.B : 4 bytes of CRC is EMPTY in Mpdu
-//     printf("\n Mpdu : \n");
-//         for (int i = 0; i <MpduLength-4; i++)
-//     {
-//         printf("%02x ", Mpdu[i]);
-//     }
-//     // w mehtag jobId w channelId
-//     Crypto_JobType macVerifyJob;
+    //add payload stored in pdu in Mpdu
+    uint16 j = 12;
+    for(uint16 i = MpduCumLength;i<(payloadSize+MpduCumLength);i++){
+        Mpdu[i] = pdu[j];
+        j++;
+    }
 
-//     macVerifyJob.jobState = CRYPTO_JOBSTATE_IDLE;
-//     // array
-//     //uint32 dataLength = sizeof(data);
-//     //array bet3 icv
-//     //uint32 macLength = sizeof(mac);
-//     Crypto_VerifyResultType verifyResult;
+    MpduCumLength += payloadSize;
 
-//     // Assign pointers to your data and MAC
-//     const uint8* dataPtr = Mpdu;
-//     const uint8* macPtr = &Mpdu[MpduLength-4];  // SUBTRACT 4 bytes for CRC NEGLECTION
-//     uint16 DataLen=MpduLength-4;
-//     uint32 outputLength = 16;
-//     uint8 output[16] ;
-//     macVerifyJob.jobPrimitiveInputOutput.inputPtr = dataPtr;
-//     macVerifyJob.jobPrimitiveInputOutput.inputLength = DataLen;
+    //generate ICV 
+    uint8* ICV;
+    Std_ReturnType retval = GenerateMac(Mpdu,MpduCumLength,ICV);
 
-//     // macVerifyJob.jobPrimitiveInputOutput.secondaryInputPtr = macPtr;
-//     // macVerifyJob.jobPrimitiveInputOutput.secondaryInputLength = 16;
+    //add ICV to Mpdu
+    uint8 k = 0;
+    for(uint16 i = MpduCumLength;i<(MpduCumLength+16);i++){
+        Mpdu[i]=ICV[k];
+        k++;
+    }
 
-//     macVerifyJob.jobPrimitiveInputOutput.outputPtr = output;
-//     macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr = &outputLength;
+    MpduCumLength += 16;
 
-//     //macVerifyJob.jobPrimitiveInputOutput.verifyPtr = &verifyResult;
-//    // encrypt or decrypt or verify or macgenerate
-//     macVerifyJob.jobPrimitiveInfo = &macGenerateJob ;
-//    // operation mode
-//     macVerifyJob.jobPrimitiveInputOutput.mode=CRYPTO_OPERATIONMODE_SINGLECALL;
-// Crypto_Init(&Crypto_PBConfig);
-// macVerifyJob.cryptoKeyId = 0; // Use your actual key ID
-// macVerifyJob.jobState = CRYPTO_JOBSTATE_ACTIVE;
-//  uint8* output1 = macVerifyJob.jobPrimitiveInputOutput.outputPtr;
+    //add CRC
+    uint16 h = length-4;
+    for(uint16 i = MpduCumLength;i<(MpduCumLength+4);i++){
+        Mpdu[i]=pdu[h];
+        h++;
+    }
 
-// //  for(uint16 i=DataLen;i<DataLen+16;i++){
-// //     Mpdu[i]=output1[i-DataLen];
-// //  }
-// memcpy(&Mpdu[DataLen], output1, 16);  // Same as above, but using array syntax
-
-
-//  DataLen += 16; // added ICV
-// // crc storing
-// for(uint16 i=0 ; i<4 ;i++)
-// {
-//     Mpdu[DataLen+i]=pdu[pduLength - 3 + i];
-// }
-//     printf("\nOutput:");
-//     for (int i = 0; i < *(macVerifyJob.jobPrimitiveInputOutput.outputLengthPtr); i++) {
-//         printf("%02x ", output1[i]);
-//     }
-
-//         printf("\n Mpdu  after : \n");
-//         for (int i = 0; i <MpduLength-4; i++)
-//     {
-//         printf("%02x ", Mpdu[i]);
-//     }
-
-// }
+    return retval;
 }
+<<<<<<< HEAD
 Std_ReturnType getSAK(Mka_SakKeyPtrType *SakKeyPtrStruct)
 {
     // job(CSM) struct >> Khalifa
@@ -952,6 +919,20 @@ Std_ReturnType getSAK(Mka_SakKeyPtrType *SakKeyPtrStruct)
     return E_OK;
     // if not true return E_NOT_OK;
 }
+=======
+
+
+
+// Std_ReturnType getSAK(Mka_SakKeyPtrType *SakKeyPtrStruct)
+// {
+//     // job(CSM) struct >> Khalifa
+//     // call method from CSM to Generate SAK
+//     uint64 sak = 0x12345678;
+//     SakKeyPtrStruct->SakKeyPtr = sak;
+//     return E_OK;
+//     // if not true return E_NOT_OK;
+// }
+>>>>>>> 2eda1d9d25f97951792c6f01f234d2b42b0193ed
 // void getKeyDerivaions(uint64 *CAK, uint64 *KEK, uint64 *ICK)
 // {
 //     // job(CSM) struct >> Khalifa
@@ -960,23 +941,30 @@ Std_ReturnType getSAK(Mka_SakKeyPtrType *SakKeyPtrStruct)
 int main(void)
 {
     Std_ReturnType retval;
+    /*   //////////////////////////////////Karim Debuging//////////////////////////////////
     uint8 data[] = {
         0x37, 0x6f, 0x41, // Original data payload + ICV 
         0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0xf2, 0xf9, 0x1f, 0xdb, 0x01, 0x8a, 0x9a, 0x53, 0x98, 0x30, 0x58, 0xf0, 0x00, 0xa4, 0xae, 0xb0,
         0x12, 0x34, 0x56, 0x78};
 
-        uint8 pdu[] = {
+    uint8 pdu[] = {
         0x37, 0x6f, 0x41, // Original data payload + CRC 
         0x82, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};    
 
     uint32 dataLength = sizeof(pdu);
+<<<<<<< HEAD
 
      uint32 dataL = sizeof(data);
     printf("%d \n", dataLength);
+=======
+    //printf("%d \n", dataLength);
+>>>>>>> 2eda1d9d25f97951792c6f01f234d2b42b0193ed
     // MAC array (16 bytes)
     //uint8 Mpdu[20+32];
     uint8*mac;
+
+    */   //////////////////////////////////////////////////////////////////////////////////
 
     // uint8 mac[] = {
     //     0xf2, 0xf9, 0x1f, 0xdb, 0x01, 0x8a, 0x9a, 0x53, 0x98, 0x30, 0x58, 0xf0, 0x00, 0xa4, 0xae, 0xb0};
@@ -989,15 +977,59 @@ int main(void)
     // else{
     //     printf("Mac is incorrect\n");
     // }   
-    retval=GenerateMac(pdu,dataLength,mac);
+
+    
+
+    /*  ////////////////////////////////////////Philo Debugging 1///////////////////////////////////
+    uint8 pdu[] = {
+        0x37, 0x6f, 0x41,0x82, 0x00, 0x00, //source address
+        0x37, 0x6f, 0x41,0x82, 0x00, 0x00, //destination address
+        0x11, 0x22, 0x33,0x44, 0x55, 0x66, //payload
+        0xE6, 0xE1, 0xF4, 0xA3             //CRC
+    };
+
+    uint8* Mpdu;
+    uint16 MpduSize = sizeof(pdu)+16*2; // length of Pdu + 16 byte of secTag + 16 byte of ICV
+
+    
+    retval=GenerateMACsec_Frame(pdu,sizeof(pdu),Mpdu);
+    
+
+    printf("\n Output:\n");
+    for (int i = 0; i < MpduSize; i++)
+    {
+        printf("%02x ", Mpdu[i]);
+    }
+    */   ////////////////////////////////////////////////////////////////////////////////////////
+
+    
+    /////////////////////////////////////////philo Debugging 2////////////////////////////////////
+    //lets test by a dummy data as if it is an Mpdu from its start till end of payload 
+    uint8 dummyData[]={
+        0x37, 0x6f, 0x41, 0x82, 0x00, 0x00, //source address
+        0x37, 0x6f, 0x41, 0x82, 0x00, 0x00, //destination address
+        //0x88, 0x8e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,0x00, 0x00, 0xff, //secTag
+        0x11, 0x22, 0x33, 0x44, 0x55//, 0x66  //payload
+    }; //34 value test
+
+    uint8* mac;
+
+    retval=GenerateMac(dummyData,sizeof(dummyData),mac);
+
+    printf("\n Output:\n");
+    for (int i = 0; i < 16; i++)
+    {
+        printf("%02x ", mac[i]);
+    }
+
      if(retval == E_OK){
-    printf("Mac is correct\n");
+    printf("\nMac is correct\n");
      }
     else{
-    printf("Mac is incorrect\n");
+    printf("\nMac is incorrect\n");
      }
 
-
+    /////////////////////////////////////////////////////////////////////////////////////////////////
     // uint8*mac1=mac;
 
     // Your actual MAC value
